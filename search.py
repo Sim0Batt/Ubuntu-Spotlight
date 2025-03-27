@@ -1,4 +1,6 @@
 import os
+import subprocess
+
 
 MAX_CHAR = 50 # Maximum characters for file name display
 
@@ -27,10 +29,16 @@ class SearchInFiles():
         os.system(f'code "{file_path}"')
 
     def search_application(search_text):
+        if not search_text.strip():  # Return empty if search text is empty or whitespace
+            return {}
+
         matching_apps = {}
         search_text = search_text.lower()
         for app in application_list:
             if search_text in app:
                 matching_apps[app] = application_list[app]
         return matching_apps
-        
+    
+    def run_applications(app_name):
+        command = application_list.get(app_name)
+        subprocess.run(["gnome-terminal", "--", "bash", "-c", f"{command}; exec bash"])

@@ -22,7 +22,7 @@ class SpotlightClone(Gtk.Window):
         geometry = screen.get_monitor_geometry(monitor)
         window_width, window_height = self.get_size()
         x = (geometry.width - window_width) // 2
-        y = (geometry.height - window_height) // 2 - 100  # Move 100 pixels up from center
+        y = (geometry.height - window_height) // 2 - 100  
         self.move(x, y)
         self.set_decorated(False)
         
@@ -68,7 +68,7 @@ class SpotlightClone(Gtk.Window):
   
 
          # Application List Container
-        self.app_title = Gtk.Label(label="File Results:")
+        self.app_title = Gtk.Label(label="Applications Results:")
         self.app_title.hide()
         self.app_title.get_style_context().add_class("title")
 
@@ -131,7 +131,7 @@ class SpotlightClone(Gtk.Window):
 
     def draw_transparent_background(self, widget, cr):
         """Make window background fully transparent."""
-        cr.set_source_rgba(1, 1, 1, 0)  # Fully transparent
+        cr.set_source_rgba(1, 1, 1, 0)
         cr.set_operator(cairo.Operator.SOURCE)
         cr.paint()
 
@@ -146,46 +146,71 @@ class SpotlightClone(Gtk.Window):
 
         def debounce_search():
             search_text = widget.get_text()
-            future = self.executor.submit(search.search_files, search_text)
-            result = future.result() or {}  # Ensure result is a dictionary
-            GLib.idle_add(self.update_file_list, result)
+            future_files = self.executor.submit(search.search_files, search_text)
+            result_files = future_files.result() or {} 
+            
+
+            future_apps = self.executor.submit(search.search_application, search_text)
+            result_apps = future_apps.result() or {} 
+            GLib.idle_add(self.update_list, result_apps, result_files)
+
+            
 
         self.debounce_timer = threading.Timer(0.3, debounce_search)
         self.debounce_timer.start()
         return False
 
-    def update_file_list(self, results):
+
+
+    def update_list(self, results_apps, results_files):
         """Updates the file list safely from the main thread."""
         for child in self.file_list_box.get_children():
             self.file_list_box.remove(child)
+        
+        for child in self.app_list_box.get_children():
+            self.app_list_box.remove(child)
 
-        self.search_results = results  # Store results
+        self.search_results_files = results_files  
+        self.search_results_apps = results_apps
 
-        if not results:
+
+        if not results_files and not results_apps:
             self.hide_box()
-            self.resize(600, 50)  # Reset to initial height
+            self.resize(600, 50) 
             return
 
         self.show_box()
 
-        # Create buttons for search results
-        for filename, filepath in self.search_results.items():
+        # Create buttons for files results
+        for filename, filepath in self.search_results_files.items():
             button = Gtk.Button(label=filename)
             button.connect("clicked", self.open_file, filepath)
             self.file_list_box.pack_start(button, False, False, 0)
+        
+        for appname, appcommand in self.search_results_apps.items():
+            button = Gtk.Button(label=appname)
+            button.connect("clicked", self.run_apps, appcommand)
+            self.app_list_box.pack_start(button, False, False, 0)
 
-        self.resize(600, 300)  # Adjust height for results
+
+        self.resize(600, 300)
         self.show_all()
         return False
 
+    # Opens the selected file
     def open_file(self, button, filepath):
-        """Opens the selected file."""
-        os.system(f'xdg-open "{filepath}"')
+        search.open_file(filepath)
         self.executor.shutdown(wait=False)
         Gtk.main_quit()
 
+    # Opens the selected application.    
+    def run_apps(self, button, command):
+        search.run_applications(command)
+        self.executor.shutdown(wait=False)
+        Gtk.main_quit()
+
+    # Closes the window and opens the first search result (if any)
     def close_window(self):
-        """Closes the window and opens the first search result (if any)."""
         if self.debounce_timer:
             self.debounce_timer.cancel()
 
@@ -211,6 +236,10 @@ class SpotlightClone(Gtk.Window):
         self.file_title.hide()
         self.app_title.hide()
         self.app_list_box.hide()
+
+
+
+
 
 # Run the application
 win = SpotlightClone()
