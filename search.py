@@ -4,7 +4,13 @@ import subprocess
 
 MAX_CHAR = 50 # Maximum characters for file name display
 
-application_list = {'firefox':'firefox', 'visual studio code':'code',  'whatsapp': '', 'spotify': 'spotify', 'zoom':'zoom', 'emacs':'emacs'}
+application_list = {'firefox':'firefox', 
+                    'visual studio code':'code',  
+                    'whatsapp': '', 
+                    'spotify': 'spotify', 
+                    'zoom':'zoom', 
+                    'appunti':'emacs /home/simone/università/appuntiLatex/', 
+                    'gaia':'python /home/simone/gaia/app.py'}
 
 class SearchInFiles():
     def __init__(self):
@@ -26,7 +32,7 @@ class SearchInFiles():
         return matching_files  # Always return a dictionary
 
     def open_file(file_path):
-        os.system(f'code "{file_path}"')
+        os.system(f'emacs "{file_path}"')
 
     def search_application(search_text):
         if not search_text.strip():  # Return empty if search text is empty or whitespace
@@ -39,6 +45,6 @@ class SearchInFiles():
                 matching_apps[app] = application_list[app]
         return matching_apps
     
-    def run_applications(app_name):
-        command = application_list.get(app_name)
-        subprocess.run(["gnome-terminal", "--", "bash", "-c", f"{command}; exec bash"])
+    def run_applications(command):
+        # command = application_list.get(app_name)
+        subprocess.run(["gnome-terminal", "--", "bash", "-c", f"{command}"])
