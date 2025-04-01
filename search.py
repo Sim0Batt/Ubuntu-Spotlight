@@ -9,8 +9,7 @@ application_list = {'firefox':'firefox',
                     'whatsapp': '', 
                     'spotify': 'spotify', 
                     'zoom':'zoom', 
-                    'appunti':'emacs /home/user_name/università/appuntiLatex/', 
-                    'gaia':'python /home/user_name/gaia/app.py'}
+}
 
 class SearchInFiles():
     def __init__(self):
@@ -20,7 +19,7 @@ class SearchInFiles():
         matching_files = {}
         if search_text != "":
             count = 0  # Counter to limit results
-            for root, dirs, files in os.walk("/home/user_name/"):  # Search from the root directory
+            for root, dirs, files in os.walk("/home/simone/"):  # Search from the root directory
                 for file in files:
                     if search_text in file:
                         name_file = file[0:MAX_CHAR]
@@ -34,7 +33,7 @@ class SearchInFiles():
         matching_dirs = {}
         if search_text != "":
             count = 0  # Counter to limit results
-            for root, dirs, files in os.walk("/home/user_name/"):  # Search from the root directory
+            for root, dirs, files in os.walk("/home/simone/"):  # Search from the root directory
                 for dir in dirs:
                     if search_text in dir:
                         name_dir = dir[0:MAX_CHAR]
