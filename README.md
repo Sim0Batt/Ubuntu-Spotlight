@@ -46,9 +46,9 @@ spotlight/
 ├── search.py             # Search logic for files, directories, and applications
 ├── test.py               # Test script for launching a directory
 ├── assets/               # Assets folder containing icons and styles
-│   ├── styles.css        # CSS file for styling the application
-│   ├── app_icons/        # Icons for applications
-│   └── file_icons/       # Icons for file types
+    ├── styles.css        # CSS file for styling the application
+    ├── app_icons/        # Icons for applications
+    └── file_icons/       # Icons for file types
 ```
 
 ## Usage
