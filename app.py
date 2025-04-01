@@ -12,22 +12,26 @@ from gi.repository import Gtk, Gdk, GLib
 from search import SearchInFiles as search  # Import your search module
 from gi.repository import GdkPixbuf
 
-
+screen = Gdk.Screen.get_default()
+monitor = screen.get_primary_monitor()
+geometry = screen.get_monitor_geometry(monitor)
+window_width, window_height = 600, 50
+Y_CENTER = (geometry.height - window_height) // 2 
 
 
 class SpotlightClone(Gtk.Window):
     def __init__(self):
         # Initialize the SpotlightClone window with UI setup and configurations.
         super().__init__(title="Spotlight Clone")
-        self.set_default_size(600, 50)
-        self.set_size_request(600, 50)
+        self.set_default_size(900, 50)
+        self.set_size_request(900, 50)
         screen = Gdk.Screen.get_default()
         monitor = screen.get_primary_monitor()
         geometry = screen.get_monitor_geometry(monitor)
         window_width, window_height = self.get_size()
-        x = (geometry.width - window_width) // 2
-        y = (geometry.height - window_height) // 2 - 100  
-        self.move(x, y)
+        self.x = (geometry.width - window_width) // 2
+        self.y = (geometry.height - window_height) // 2 
+        self.move(self.x, self.y)
         self.set_decorated(False)
         
         # Enable transparency & allow input
@@ -50,8 +54,8 @@ class SpotlightClone(Gtk.Window):
         self.search_results = {}
 
         # UI Setup
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-        self.add(vbox)
+        vbox_general = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        self.add(vbox_general)
 
         # Search Entry
         self.search_entry = Gtk.Entry()
@@ -59,7 +63,7 @@ class SpotlightClone(Gtk.Window):
         self.search_entry.get_style_context().add_class("custom-search-entry")
         self.search_entry.connect("activate", self.close_window)
         self.search_entry.connect("key-press-event", self.on_key_press)
-        vbox.pack_start(self.search_entry, False, False, 0)
+        vbox_general.pack_start(self.search_entry, False, False, 0)
 
         # File List Container
         self.file_title = Gtk.Label(label="File Results:")
@@ -69,9 +73,17 @@ class SpotlightClone(Gtk.Window):
         self.file_list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)  # Reduced spacing
         self.file_list_box.get_style_context().add_class("file-list-box")
         self.file_list_box.hide()
-  
 
-         # Application List Container
+        # Directory List Container
+        self.dir_title = Gtk.Label(label="Directories Results:")
+        self.dir_title.hide()
+        self.dir_title.get_style_context().add_class("title")
+
+        self.dir_list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)  # Reduced spacing
+        self.dir_list_box.get_style_context().add_class("file-list-box")
+        self.dir_list_box.hide()
+
+        # Application List Container
         self.app_title = Gtk.Label(label="Applications Results:")
         self.app_title.hide()
         self.app_title.get_style_context().add_class("title")
@@ -81,11 +93,16 @@ class SpotlightClone(Gtk.Window):
         self.app_list_box.hide()
 
         # Pack the file list box into the main vbox
-        vbox.pack_start(self.file_title, False, False, 0)  
-        vbox.pack_start(self.file_list_box, True, True, 1)  
-        vbox.pack_start(self.app_title, False, False, 0)
-        vbox.pack_start(self.app_list_box, True, True, 1)
+        self.vbox_list_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        self.vbox_list_container.pack_start(self.file_title, False, False, 0)
+        self.vbox_list_container.pack_start(self.file_list_box, True, True, 1)
+        self.vbox_list_container.pack_start(self.dir_title, False, False, 0)
+        self.vbox_list_container.pack_start(self.dir_list_box, True, True, 1)
+        self.vbox_list_container.pack_start(self.app_title, False, False, 0)
+        self.vbox_list_container.pack_start(self.app_list_box, True, True, 1)
 
+        # Add vbox_list_container to vbox_general
+        vbox_general.pack_start(self.vbox_list_container, True, True, 1)
 
         # Apply CSS
         self.apply_styles()
@@ -94,6 +111,8 @@ class SpotlightClone(Gtk.Window):
         self.connect("draw", self.draw_transparent_background)
 
         self.show_all()
+        self.vbox_list_container.hide()
+
     
     def apply_styles(self):
         # Apply CSS styles to the window.
@@ -131,10 +150,13 @@ class SpotlightClone(Gtk.Window):
             future_files = self.executor.submit(search.search_files, search_text)
             result_files = future_files.result() or {}
 
+            future_dirs = self.executor.submit(search.search_dirs, search_text)
+            result_dirs = future_dirs.result() or {}
+
             future_apps = self.executor.submit(search.search_application, search_text)
             result_apps = future_apps.result() or {}
 
-            GLib.idle_add(self.update_list, result_apps, result_files)
+            GLib.idle_add(self.update_list, result_apps, result_files, result_dirs)
 
         self.debounce_timer = threading.Timer(0.3, debounce_search)
         self.debounce_timer.start()
@@ -142,28 +164,36 @@ class SpotlightClone(Gtk.Window):
 
 
 
-    def update_list(self, results_apps, results_files):
+    def update_list(self, results_apps, results_files, results_dirs):
         # Updates the file and application lists safely from the main thread.
         for child in self.file_list_box.get_children():
             self.file_list_box.remove(child)
         
+        for child in self.dir_list_box.get_children():
+            self.dir_list_box.remove(child)
+
         for child in self.app_list_box.get_children():
             self.app_list_box.remove(child)
 
         self.search_results_files = results_files  
         self.search_results_apps = results_apps
+        self.search_results_dirs = results_dirs
 
+        self.redefine_position(self.search_results_apps, self.search_results_files, self.search_results_dirs)
 
-        if not results_files and not results_apps:
+        if not self.search_results_files and not self.search_results_apps and not self.search_results_dirs:
             self.hide_box()
-            self.resize(600, 50) 
+            self.resize(600, 50)
+            self.move(self.x, Y_CENTER)
             return
 
         self.show_box()
 
+        
+
         img_path = 'assets/file_icons/txt.png'
 
-        # Create buttons for files results
+        # Create box for files results
         for filename, filepath in self.search_results_files.items():
 
             event_box_files = Gtk.EventBox()
@@ -175,6 +205,9 @@ class SpotlightClone(Gtk.Window):
             filename_label.get_style_context().add_class("filename-text")
             filename_label.set_halign(Gtk.Align.CENTER)
             filename_label.set_valign(Gtk.Align.CENTER) 
+            filepath_label = Gtk.Label(label=filepath.replace("/home/user_name", ""))  # Use keyword argument for label
+            filepath_label.get_style_context().add_class("filepath-text")
+            filepath_label.set_halign(Gtk.Align.END)  # Align to the left
 
             
             img_path = self.get_type_of_file(filename)
@@ -189,11 +222,50 @@ class SpotlightClone(Gtk.Window):
                     
             box_files.pack_start(image, False, False, 0)
             box_files.pack_start(filename_label, False, False, 0)
+            box_files.pack_start(filepath_label, False, False, 0)  # Add some space
             event_box_files.add(box_files)
             event_box_files.connect("button-press-event", self.open_file, filepath)
 
             self.file_list_box.pack_start(event_box_files, False, False, 0)
 
+
+        # Create box for dirs results
+        img_path = 'assets/folder.png'
+        
+        for dir_name, dir_path in self.search_results_dirs.items():
+
+            event_box_dirs = Gtk.EventBox()
+            box_dirs = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+            box_dirs.get_style_context().add_class("file-list-box")
+
+            dir_name_label = Gtk.Label(label=dir_name)  # Use keyword argument for label
+            dir_name_label.set_halign(Gtk.Align.CENTER)  
+            dir_name_label.get_style_context().add_class("filename-text")
+            dirpath_label = Gtk.Label(label=dir_path.replace("/home/user_name", ""))  # Use keyword argument for label
+            dirpath_label.get_style_context().add_class("filepath-text")
+            dirpath_label.set_halign(Gtk.Align.END)
+            dir_name_label.set_halign(Gtk.Align.CENTER)
+            dir_name_label.set_valign(Gtk.Align.CENTER) 
+
+
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                os.path.join(os.path.dirname(__file__), img_path), 23, 23
+            )
+            image = Gtk.Image.new_from_pixbuf(pixbuf)
+            image.set_halign(Gtk.Align.CENTER)
+            image.set_valign(Gtk.Align.CENTER) 
+
+                    
+            box_dirs.pack_start(image, False, False, 0)
+            box_dirs.pack_start(dir_name_label, False, False, 0)
+            box_dirs.pack_start(dirpath_label, False, False, 0) 
+            event_box_dirs.add(box_dirs)
+            event_box_dirs.connect("button-press-event", self.open_file, dir_path)
+
+            self.dir_list_box.pack_start(event_box_dirs, False, False, 0)
+
+
+        # Create box for apps results
         img_path = 'assets/app_icons/app.png'
         
         for appname, appcommand in self.search_results_apps.items():
@@ -236,6 +308,12 @@ class SpotlightClone(Gtk.Window):
         self.executor.shutdown(wait=False)
         Gtk.main_quit()
 
+    def open_dir(self, widget, event, dir_path):
+        # Opens the selected directory.
+        search.open_directory(dir_path)
+        self.executor.shutdown(wait=False)
+        Gtk.main_quit()
+
     def run_apps(self, widget, event, app_name):
         # Opens the selected application.
         search.run_applications(app_name)
@@ -262,17 +340,11 @@ class SpotlightClone(Gtk.Window):
 
     def show_box(self):
         # Show the file and application result boxes.
-        self.file_list_box.show()
-        self.file_title.show()
-        self.app_title.show()
-        self.app_list_box.show()
+        self.vbox_list_container.show()
 
     def hide_box(self):
         # Hide the file and application result boxes.
-        self.file_list_box.hide()
-        self.file_title.hide()
-        self.app_title.hide()
-        self.app_list_box.hide()
+        self.vbox_list_container.hide()
 
     def get_type_of_file(self, filename):
         # Returns the icon path for the given file type.
@@ -282,6 +354,20 @@ class SpotlightClone(Gtk.Window):
             return 'assets/file_icons/txt.png'
         elif('.cpp' in filename):
             return 'assets/file_icons/cpp.png'
+        elif('.c' in filename):
+            return 'assets/file_icons/cpp.png'
+        elif('.png' in filename or '.jpg' in filename or '.jpeg' in filename):
+            return 'assets/file_icons/image.png'
+        elif('.pdf' in filename):
+            return 'assets/file_icons/pdf.png'
+        elif('.json' in filename):
+            return 'assets/file_icons/json.png'
+        elif('.html' in filename):
+            return 'assets/file_icons/html.png'
+        elif('.js' in filename):
+            return 'assets/file_icons/js.png'
+        elif('.vue' in filename):
+            return 'assets/file_icons/vue.png'
         return 'assets/file_icons/txt.png'
     
     def get_app_icon(self, app_name):
@@ -294,8 +380,20 @@ class SpotlightClone(Gtk.Window):
             return 'assets/app_icons/whatsapp.png'
         elif(app_name == 'emacs'):
             return 'assets/app_icons/emacs.png'
+        elif(app_name == 'appunti'):
+            return 'assets/app_icons/appunti.png'
+        elif(app_name == 'spotify'):
+            return 'assets/app_icons/spotify.png'
         return 'assets/app_icons/app.png'
 
+    def redefine_position(self, results_apps, results_files, results_dirs):
+        # Dynamically adjust self.y without modifying the constant center value
+        if (len(results_apps) > 5 or len(results_files) > 5 or len(results_dirs) > 5):
+            self.move(self.x, self.y - 500)
+        else:
+            self.move(self.x, Y_CENTER)
+
+        
 
 
 

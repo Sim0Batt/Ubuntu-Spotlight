@@ -9,8 +9,8 @@ application_list = {'firefox':'firefox',
                     'whatsapp': '', 
                     'spotify': 'spotify', 
                     'zoom':'zoom', 
-                    'appunti':'emacs /home/simone/università/appuntiLatex/', 
-                    'gaia':'python /home/simone/gaia/app.py'}
+                    'appunti':'emacs /home/user_name/università/appuntiLatex/', 
+                    'gaia':'python /home/user_name/gaia/app.py'}
 
 class SearchInFiles():
     def __init__(self):
@@ -18,10 +18,9 @@ class SearchInFiles():
 
     def search_files(search_text):
         matching_files = {}
-        search_text = search_text.lower()  # Convert to lowercase for case-insensitive search
         if search_text != "":
             count = 0  # Counter to limit results
-            for root, dirs, files in os.walk("/home/simone/"):  # Search from the root directory
+            for root, dirs, files in os.walk("/home/user_name/"):  # Search from the root directory
                 for file in files:
                     if search_text in file:
                         name_file = file[0:MAX_CHAR]
@@ -30,10 +29,25 @@ class SearchInFiles():
                         if count >= 10:  # Stop after 10 results
                             return matching_files
         return matching_files  # Always return a dictionary
+    
+    def search_dirs(search_text):
+        matching_dirs = {}
+        if search_text != "":
+            count = 0  # Counter to limit results
+            for root, dirs, files in os.walk("/home/user_name/"):  # Search from the root directory
+                for dir in dirs:
+                    if search_text in dir:
+                        name_dir = dir[0:MAX_CHAR]
+                        matching_dirs[name_dir] = os.path.join(root, dir)
+                        count += 1
+                        if count >= 10:  # Stop after 10 results
+                            return matching_dirs
+        return matching_dirs  # Always return a dictionary
 
     def open_file(file_path):
-        os.system(f'emacs "{file_path}"')
+        subprocess.run(["gnome-terminal", "--", "bash", "-c", f"code {file_path}"])
 
+    
     def search_application(search_text):
         if not search_text.strip():  # Return empty if search text is empty or whitespace
             return {}
@@ -46,5 +60,9 @@ class SearchInFiles():
         return matching_apps
     
     def run_applications(command):
-        # command = application_list.get(app_name)
-        subprocess.run(["gnome-terminal", "--", "bash", "-c", f"{command}"])
+        subprocess.run(["gnome-terminal", "--", "bash", "-c", str(command)])
+        return
+    
+    def open_directory(dir_path):
+        subprocess.run(["gnome-terminal", "--", "bash", "-c", f"nautilus {dir_path}"])
+        return
