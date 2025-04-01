@@ -70,7 +70,7 @@ spotlight/
 
 ## Known Limitations
 
-- The search is limited to the `/home/simone/` directory. Update the root directory in [`search.py`](search.py) if needed.
+- Replace the all the strings `user_name` into the code with the user of your laptop.
 - Only the first 10 results are displayed for files and directories.
 
 ## Contributing
@@ -80,8 +80,3 @@ Contributions are welcome! Feel free to submit issues or pull requests to improv
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
-
-## Screenshots
-
-![Search Bar](assets/screenshots/search_bar.png)
-![Search Results](assets/screenshots/search_results.png)
