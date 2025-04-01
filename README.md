@@ -11,13 +11,13 @@ Spotlight Clone is a Python-based desktop search application inspired by macOS S
 - **Custom Icons**: Displays file type and application-specific icons for better visual identification.
 - **Keyboard Shortcuts**: 
   - Press `Escape` to close the application.
-  - Use the `Enter` key to execute the first search result.
+  - Use the `Enter` key to run the first app result.
 
 ## Installation
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Sim0Batt/Ubuntu-Spotlight
    cd spotlight
    ```
 
@@ -46,10 +46,9 @@ spotlight/
 ├── search.py             # Search logic for files, directories, and applications
 ├── test.py               # Test script for launching a directory
 ├── assets/               # Assets folder containing icons and styles
-│   ├── styles.css        # CSS file for styling the application
-│   ├── app_icons/        # Icons for applications
-│   └── file_icons/       # Icons for file types
-└── __pycache__/          # Compiled Python files (auto-generated)
+    ├── styles.css        # CSS file for styling the application
+    ├── app_icons/        # Icons for applications
+    └── file_icons/       # Icons for file types
 ```
 
 ## Usage
@@ -70,18 +69,9 @@ spotlight/
 
 ## Known Limitations
 
-- The search is limited to the `/home/simone/` directory. Update the root directory in [`search.py`](search.py) if needed.
+- Replace the all the strings `user_name` into the code with the user of your laptop.
 - Only the first 10 results are displayed for files and directories.
 
 ## Contributing
 
 Contributions are welcome! Feel free to submit issues or pull requests to improve the application.
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
-## Screenshots
-
-![Search Bar](assets/screenshots/search_bar.png)
-![Search Results](assets/screenshots/search_results.png)
