@@ -49,7 +49,6 @@ spotlight/
 │   ├── styles.css        # CSS file for styling the application
 │   ├── app_icons/        # Icons for applications
 │   └── file_icons/       # Icons for file types
-└── __pycache__/          # Compiled Python files (auto-generated)
 ```
 
 ## Usage
