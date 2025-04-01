@@ -11,7 +11,7 @@ Spotlight Clone is a Python-based desktop search application inspired by macOS S
 - **Custom Icons**: Displays file type and application-specific icons for better visual identification.
 - **Keyboard Shortcuts**: 
   - Press `Escape` to close the application.
-  - Use the `Enter` key to execute the first search result.
+  - Use the `Enter` key to run the first app result.
 
 ## Installation
 
