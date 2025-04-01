@@ -17,7 +17,7 @@ Spotlight Clone is a Python-based desktop search application inspired by macOS S
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Sim0Batt/Ubuntu-Spotlight
    cd spotlight
    ```
 
