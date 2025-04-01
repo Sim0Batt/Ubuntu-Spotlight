@@ -33,6 +33,7 @@ class SpotlightClone(Gtk.Window):
         self.y = (geometry.height - window_height) // 2 
         self.move(self.x, self.y)
         self.set_decorated(False)
+        self.first_app_command = ''
         
         # Enable transparency & allow input
         self.set_app_paintable(True)
@@ -94,12 +95,13 @@ class SpotlightClone(Gtk.Window):
 
         # Pack the file list box into the main vbox
         self.vbox_list_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        self.vbox_list_container.pack_start(self.app_title, False, False, 0)
+        self.vbox_list_container.pack_start(self.app_list_box, True, True, 1)
         self.vbox_list_container.pack_start(self.file_title, False, False, 0)
         self.vbox_list_container.pack_start(self.file_list_box, True, True, 1)
         self.vbox_list_container.pack_start(self.dir_title, False, False, 0)
         self.vbox_list_container.pack_start(self.dir_list_box, True, True, 1)
-        self.vbox_list_container.pack_start(self.app_title, False, False, 0)
-        self.vbox_list_container.pack_start(self.app_list_box, True, True, 1)
+        
 
         # Add vbox_list_container to vbox_general
         vbox_general.pack_start(self.vbox_list_container, True, True, 1)
@@ -139,6 +141,10 @@ class SpotlightClone(Gtk.Window):
             self.close_window(widget)
             return
 
+        if event.keyval == Gdk.KEY_Return:
+            search.run_applications(self.first_app_command)
+            return
+
         if self.debounce_timer:
             self.debounce_timer.cancel()
 
@@ -157,9 +163,13 @@ class SpotlightClone(Gtk.Window):
             result_apps = future_apps.result() or {}
 
             GLib.idle_add(self.update_list, result_apps, result_files, result_dirs)
+            self.first_app_command = result_apps.get(next(iter(result_apps)), '')  # Get the first app command
 
-        self.debounce_timer = threading.Timer(0.3, debounce_search)
+
+        self.debounce_timer = threading.Timer(0.3, debounce_search)  # Wrap event in a tuple
         self.debounce_timer.start()
+
+        
         return False
 
 
@@ -189,6 +199,39 @@ class SpotlightClone(Gtk.Window):
 
         self.show_box()
 
+
+        # Create box for apps results
+        img_path = 'assets/app_icons/app.png'
+        
+        for appname, appcommand in self.search_results_apps.items():
+            event_box_app = Gtk.EventBox()
+            box_app = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+            box_app.get_style_context().add_class("file-list-box")
+
+
+            appname_label = Gtk.Label(label=appname)  # Use keyword argument for label
+            appname_label.set_halign(Gtk.Align.CENTER)  
+            appname_label.get_style_context().add_class("filename-text")
+            appname_label.set_halign(Gtk.Align.CENTER)
+            appname_label.set_valign(Gtk.Align.CENTER) 
+
+
+            img_path = self.get_app_icon(appname)
+                    
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                os.path.join(os.path.dirname(__file__), img_path), 23, 23
+            )
+            image = Gtk.Image.new_from_pixbuf(pixbuf)
+            image.set_halign(Gtk.Align.CENTER)
+            image.set_valign(Gtk.Align.CENTER) 
+
+            box_app.pack_start(image, False, False, 0)
+            box_app.pack_start(appname_label, False, False, 0)
+            event_box_app.add(box_app)
+            event_box_app.connect("button-press-event", self.run_apps, appcommand)
+
+            self.app_list_box.pack_start(event_box_app, False, False, 0)
+
         
 
         img_path = 'assets/file_icons/txt.png'
@@ -205,7 +248,7 @@ class SpotlightClone(Gtk.Window):
             filename_label.get_style_context().add_class("filename-text")
             filename_label.set_halign(Gtk.Align.CENTER)
             filename_label.set_valign(Gtk.Align.CENTER) 
-            filepath_label = Gtk.Label(label=filepath.replace("/home/user_name", ""))  # Use keyword argument for label
+            filepath_label = Gtk.Label(label=filepath.replace("/home/simone", ""))  # Use keyword argument for label
             filepath_label.get_style_context().add_class("filepath-text")
             filepath_label.set_halign(Gtk.Align.END)  # Align to the left
 
@@ -241,7 +284,7 @@ class SpotlightClone(Gtk.Window):
             dir_name_label = Gtk.Label(label=dir_name)  # Use keyword argument for label
             dir_name_label.set_halign(Gtk.Align.CENTER)  
             dir_name_label.get_style_context().add_class("filename-text")
-            dirpath_label = Gtk.Label(label=dir_path.replace("/home/user_name", ""))  # Use keyword argument for label
+            dirpath_label = Gtk.Label(label=dir_path.replace("/home/simone", ""))  # Use keyword argument for label
             dirpath_label.get_style_context().add_class("filepath-text")
             dirpath_label.set_halign(Gtk.Align.END)
             dir_name_label.set_halign(Gtk.Align.CENTER)
@@ -265,38 +308,7 @@ class SpotlightClone(Gtk.Window):
             self.dir_list_box.pack_start(event_box_dirs, False, False, 0)
 
 
-        # Create box for apps results
-        img_path = 'assets/app_icons/app.png'
         
-        for appname, appcommand in self.search_results_apps.items():
-            event_box_app = Gtk.EventBox()
-            box_app = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
-            box_app.get_style_context().add_class("file-list-box")
-
-
-            appname_label = Gtk.Label(label=appname)  # Use keyword argument for label
-            appname_label.set_halign(Gtk.Align.CENTER)  
-            appname_label.get_style_context().add_class("filename-text")
-            appname_label.set_halign(Gtk.Align.CENTER)
-            appname_label.set_valign(Gtk.Align.CENTER) 
-
-
-            img_path = self.get_app_icon(appname)
-                    
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                os.path.join(os.path.dirname(__file__), img_path), 23, 23
-            )
-            image = Gtk.Image.new_from_pixbuf(pixbuf)
-            image.set_halign(Gtk.Align.CENTER)
-            image.set_valign(Gtk.Align.CENTER) 
-
-            box_app.pack_start(image, False, False, 0)
-            box_app.pack_start(appname_label, False, False, 0)
-            event_box_app.add(box_app)
-            event_box_app.connect("button-press-event", self.run_apps, appcommand)
-
-            self.app_list_box.pack_start(event_box_app, False, False, 0)
-
 
         self.resize(600, 300)
         self.show_all()
