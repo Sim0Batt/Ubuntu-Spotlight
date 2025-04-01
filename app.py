@@ -248,7 +248,7 @@ class SpotlightClone(Gtk.Window):
             filename_label.get_style_context().add_class("filename-text")
             filename_label.set_halign(Gtk.Align.CENTER)
             filename_label.set_valign(Gtk.Align.CENTER) 
-            filepath_label = Gtk.Label(label=filepath.replace("/home/simone", ""))  # Use keyword argument for label
+            filepath_label = Gtk.Label(label=filepath.replace("/home/user_name", ""))  # Use keyword argument for label
             filepath_label.get_style_context().add_class("filepath-text")
             filepath_label.set_halign(Gtk.Align.END)  # Align to the left
 
@@ -284,7 +284,7 @@ class SpotlightClone(Gtk.Window):
             dir_name_label = Gtk.Label(label=dir_name)  # Use keyword argument for label
             dir_name_label.set_halign(Gtk.Align.CENTER)  
             dir_name_label.get_style_context().add_class("filename-text")
-            dirpath_label = Gtk.Label(label=dir_path.replace("/home/simone", ""))  # Use keyword argument for label
+            dirpath_label = Gtk.Label(label=dir_path.replace("/home/user_name", ""))  # Use keyword argument for label
             dirpath_label.get_style_context().add_class("filepath-text")
             dirpath_label.set_halign(Gtk.Align.END)
             dir_name_label.set_halign(Gtk.Align.CENTER)
