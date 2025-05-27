@@ -14,6 +14,7 @@
 
 3. **Run the Application**
    ```bash
+   python3 indexer.py --index /home/your_user/
    python3 app.py
    ```
 
@@ -45,14 +46,6 @@ spotlight/
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to open a pull request or an issue on the [GitHub repo](https://github.com/Sim0Batt/Ubuntu-Spotlight).
-
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
 
 ## 📷 Screenshots
 
