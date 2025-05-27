@@ -56,15 +56,9 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## 📷 Screenshots
 
-> *(Optional: You can add screenshots of the UI here by placing images in the `assets/` folder and referencing them below.)*
-
-```markdown
 ![Spotlight UI](assets/screen1.png)
-```
 
-```markdown
 ![Spotlight UI](assets/screen2.png)
-```
 
 ---
 
