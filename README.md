@@ -35,10 +35,8 @@ spotlight/
 ├── app.py                 # Main GUI application
 ├── indexer.py             # Indexing logic for files and applications
 ├── search.py              # Search algorithm and filtering
-├── watchdog_indexer.py    # File system watching with auto-indexing
 ├── spotlight_index.db     # SQLite database to store indexed data
 ├── assets/                # Icons and other UI assets
-└── test.py                # Basic script for testing components
 ```
 
 ---
