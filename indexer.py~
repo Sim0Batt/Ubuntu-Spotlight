@@ -1,0 +1,53 @@
+import sqlite3
+import os
+import argparse
+
+DB_PATH = "spotlight_index.db"
+
+def build_index(root_dir):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Create FTS5 virtual table
+    cursor.execute("DROP TABLE IF EXISTS files")
+    cursor.execute("CREATE VIRTUAL TABLE files USING fts5(path, name)")
+
+    # Walk and index files
+    for root, dirs, files in os.walk(root_dir):
+        for file in files:
+            full_path = os.path.join(root, file)
+            cursor.execute("INSERT INTO files (path, name) VALUES (?, ?)", (full_path, file))
+
+    conn.commit()
+    conn.close()
+    print(f"Index built for: {root_dir}")
+
+def search(term):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Perform fuzzy prefix match (e.g. 'sea*')
+    query = f"{term}*"
+    cursor.execute("SELECT path FROM files WHERE name MATCH ?", (query,))
+    results = cursor.fetchall()
+    conn.close()
+
+    print(f"\nSearch results for '{term}':")
+    for row in results:
+        print(row[0])
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Spotlight Clone Indexer")
+    parser.add_argument("--index", type=str, help="Path to index")
+    parser.add_argument("--search", type=str, help="Search term")
+
+    args = parser.parse_args()
+
+    if args.index:
+        build_index(args.index)
+    elif args.search:
+        search(args.search)
+    else:
+        print("Usage:")
+        print("  python indexer.py --index /path/to/folder")
+        print("  python indexer.py --search filename")

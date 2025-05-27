@@ -15,25 +15,31 @@ from gi.repository import GdkPixbuf
 screen = Gdk.Screen.get_default()
 monitor = screen.get_primary_monitor()
 geometry = screen.get_monitor_geometry(monitor)
-window_width, window_height = 600, 50
-Y_CENTER = (geometry.height - window_height) // 2 
+window_width, window_height = 900, 50
+Y_CENTER = geometry.y + (geometry.height - window_height) // 2
 
 
 class SpotlightClone(Gtk.Window):
     def __init__(self):
+        # Add icon cache dictionaries
+        self.file_icon_cache = {}
+        self.app_icon_cache = {}
+        self.pixbuf_cache = {}  
         # Initialize the SpotlightClone window with UI setup and configurations.
-        super().__init__(title="Spotlight Clone")
+        super().__init__(title="Spotlight")
         self.set_default_size(900, 50)
         self.set_size_request(900, 50)
-        screen = Gdk.Screen.get_default()
+        screen = self.get_screen()
         monitor = screen.get_primary_monitor()
-        geometry = screen.get_monitor_geometry(monitor)
+        geometry = screen.get_monitor_geometry(monitor)  # has x, y, width, height
         window_width, window_height = self.get_size()
-        self.x = (geometry.width - window_width) // 2
-        self.y = (geometry.height - window_height) // 2 
+        # center on that monitor:
+        self.x = geometry.x + (geometry.width - window_width) // 2
+        self.y = geometry.y + (geometry.height - window_height) // 2
         self.move(self.x, self.y)
         self.set_decorated(False)
         self.first_app_command = ''
+        self.set_size_request(600, 50)
         
         # Enable transparency & allow input
         self.set_app_paintable(True)
@@ -46,7 +52,7 @@ class SpotlightClone(Gtk.Window):
         self.set_keep_above(True)
 
         # Thread pool for search
-        self.executor = ThreadPoolExecutor(max_workers=2)
+        self.executor = ThreadPoolExecutor(max_workers=4)
 
         # Debounce timer
         self.debounce_timer = None
@@ -166,7 +172,7 @@ class SpotlightClone(Gtk.Window):
             self.first_app_command = result_apps.get(next(iter(result_apps)), '')  # Get the first app command
 
 
-        self.debounce_timer = threading.Timer(0.3, debounce_search)  # Wrap event in a tuple
+        self.debounce_timer = threading.Timer(0.5, debounce_search)  # Wrap event in a tuple
         self.debounce_timer.start()
 
         
@@ -175,142 +181,42 @@ class SpotlightClone(Gtk.Window):
 
 
     def update_list(self, results_apps, results_files, results_dirs):
-        # Updates the file and application lists safely from the main thread.
-        for child in self.file_list_box.get_children():
-            self.file_list_box.remove(child)
+        # Clear existing widgets
+        self.file_list_box.foreach(lambda w: w.destroy())
+        self.dir_list_box.foreach(lambda w: w.destroy()) 
+        self.app_list_box.foreach(lambda w: w.destroy())
         
-        for child in self.dir_list_box.get_children():
-            self.dir_list_box.remove(child)
-
-        for child in self.app_list_box.get_children():
-            self.app_list_box.remove(child)
-
         self.search_results_files = results_files  
         self.search_results_apps = results_apps
         self.search_results_dirs = results_dirs
 
-        self.redefine_position(self.search_results_apps, self.search_results_files, self.search_results_dirs)
-
-        if not self.search_results_files and not self.search_results_apps and not self.search_results_dirs:
+        # Check if we have any results
+        if not (results_apps or results_files or results_dirs):
             self.hide_box()
-            self.resize(600, 50)
+            self.resize(900, 50)
             self.move(self.x, Y_CENTER)
-            return
+            return False
+
+        # Update window position
+        self.redefine_position(results_apps, results_files, results_dirs)
+        
+        # Create and add app widgets
+        for appname, appcommand in results_apps.items():
+            widget = self.create_app_widget(appname, appcommand)
+            self.app_list_box.pack_start(widget, False, False, 0)
+
+        # Create and add file widgets
+        for filename, filepath in results_files.items():
+            widget = self.create_file_widget(filename, filepath)
+            self.file_list_box.pack_start(widget, False, False, 0)
+
+        # Create and add directory widgets
+        for dir_name, dir_path in results_dirs.items():
+            widget = self.create_dir_widget(dir_name, dir_path)
+            self.dir_list_box.pack_start(widget, False, False, 0)
 
         self.show_box()
-
-
-        # Create box for apps results
-        img_path = 'assets/app_icons/app.png'
-        
-        for appname, appcommand in self.search_results_apps.items():
-            event_box_app = Gtk.EventBox()
-            box_app = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
-            box_app.get_style_context().add_class("file-list-box")
-
-
-            appname_label = Gtk.Label(label=appname)  # Use keyword argument for label
-            appname_label.set_halign(Gtk.Align.CENTER)  
-            appname_label.get_style_context().add_class("filename-text")
-            appname_label.set_halign(Gtk.Align.CENTER)
-            appname_label.set_valign(Gtk.Align.CENTER) 
-
-
-            img_path = self.get_app_icon(appname)
-                    
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                os.path.join(os.path.dirname(__file__), img_path), 23, 23
-            )
-            image = Gtk.Image.new_from_pixbuf(pixbuf)
-            image.set_halign(Gtk.Align.CENTER)
-            image.set_valign(Gtk.Align.CENTER) 
-
-            box_app.pack_start(image, False, False, 0)
-            box_app.pack_start(appname_label, False, False, 0)
-            event_box_app.add(box_app)
-            event_box_app.connect("button-press-event", self.run_apps, appcommand)
-
-            self.app_list_box.pack_start(event_box_app, False, False, 0)
-
-        
-
-        img_path = 'assets/file_icons/txt.png'
-
-        # Create box for files results
-        for filename, filepath in self.search_results_files.items():
-
-            event_box_files = Gtk.EventBox()
-            box_files = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
-            box_files.get_style_context().add_class("file-list-box")
-
-            filename_label = Gtk.Label(label=filename)  # Use keyword argument for label
-            filename_label.set_halign(Gtk.Align.CENTER)  
-            filename_label.get_style_context().add_class("filename-text")
-            filename_label.set_halign(Gtk.Align.CENTER)
-            filename_label.set_valign(Gtk.Align.CENTER) 
-            filepath_label = Gtk.Label(label=filepath.replace("/home/user_name", ""))  # Use keyword argument for label
-            filepath_label.get_style_context().add_class("filepath-text")
-            filepath_label.set_halign(Gtk.Align.END)  # Align to the left
-
-            
-            img_path = self.get_type_of_file(filename)
-            
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                os.path.join(os.path.dirname(__file__), img_path), 23, 23
-            )
-            image = Gtk.Image.new_from_pixbuf(pixbuf)
-            image.set_halign(Gtk.Align.CENTER)
-            image.set_valign(Gtk.Align.CENTER) 
-
-                    
-            box_files.pack_start(image, False, False, 0)
-            box_files.pack_start(filename_label, False, False, 0)
-            box_files.pack_start(filepath_label, False, False, 0)  # Add some space
-            event_box_files.add(box_files)
-            event_box_files.connect("button-press-event", self.open_file, filepath)
-
-            self.file_list_box.pack_start(event_box_files, False, False, 0)
-
-
-        # Create box for dirs results
-        img_path = 'assets/folder.png'
-        
-        for dir_name, dir_path in self.search_results_dirs.items():
-
-            event_box_dirs = Gtk.EventBox()
-            box_dirs = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
-            box_dirs.get_style_context().add_class("file-list-box")
-
-            dir_name_label = Gtk.Label(label=dir_name)  # Use keyword argument for label
-            dir_name_label.set_halign(Gtk.Align.CENTER)  
-            dir_name_label.get_style_context().add_class("filename-text")
-            dirpath_label = Gtk.Label(label=dir_path.replace("/home/user_name", ""))  # Use keyword argument for label
-            dirpath_label.get_style_context().add_class("filepath-text")
-            dirpath_label.set_halign(Gtk.Align.END)
-            dir_name_label.set_halign(Gtk.Align.CENTER)
-            dir_name_label.set_valign(Gtk.Align.CENTER) 
-
-
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(
-                os.path.join(os.path.dirname(__file__), img_path), 23, 23
-            )
-            image = Gtk.Image.new_from_pixbuf(pixbuf)
-            image.set_halign(Gtk.Align.CENTER)
-            image.set_valign(Gtk.Align.CENTER) 
-
-                    
-            box_dirs.pack_start(image, False, False, 0)
-            box_dirs.pack_start(dir_name_label, False, False, 0)
-            box_dirs.pack_start(dirpath_label, False, False, 0) 
-            event_box_dirs.add(box_dirs)
-            event_box_dirs.connect("button-press-event", self.open_file, dir_path)
-
-            self.dir_list_box.pack_start(event_box_dirs, False, False, 0)
-
-
-        
-
-        self.resize(600, 300)
+        self.resize(900, 300)
         self.show_all()
         return False
 
@@ -359,28 +265,33 @@ class SpotlightClone(Gtk.Window):
         self.vbox_list_container.hide()
 
     def get_type_of_file(self, filename):
-        # Returns the icon path for the given file type.
-        if('.py' in filename):
-            return 'assets/file_icons/python.png'
-        elif('.txt' in filename):
-            return 'assets/file_icons/txt.png'
-        elif('.cpp' in filename):
-            return 'assets/file_icons/cpp.png'
-        elif('.c' in filename):
-            return 'assets/file_icons/cpp.png'
-        elif('.png' in filename or '.jpg' in filename or '.jpeg' in filename):
-            return 'assets/file_icons/image.png'
-        elif('.pdf' in filename):
-            return 'assets/file_icons/pdf.png'
-        elif('.json' in filename):
-            return 'assets/file_icons/json.png'
-        elif('.html' in filename):
-            return 'assets/file_icons/html.png'
-        elif('.js' in filename):
-            return 'assets/file_icons/js.png'
-        elif('.vue' in filename):
-            return 'assets/file_icons/vue.png'
-        return 'assets/file_icons/txt.png'
+        # Check cache first
+        if filename in self.file_icon_cache:
+            return self.file_icon_cache[filename]
+            
+        icon_path = 'assets/file_icons/txt.png' # Default
+        
+        # Determine icon path based on extension
+        for ext, icon in {
+            '.py': 'python.png',
+            '.txt': 'txt.png',
+            '.cpp': 'cpp.png',
+            '.c': 'cpp.png',
+            '.png': 'image.png',
+            '.jpg': 'image.png',
+            '.jpeg': 'image.png',
+            '.pdf': 'pdf.png',
+            '.json': 'json.png',
+            '.html': 'html.png',
+            '.js': 'js.png',
+            '.vue': 'vue.png'
+        }.items():
+            if filename.endswith(ext):
+                icon_path = f'assets/file_icons/{icon}'
+                break
+                
+        self.file_icon_cache[filename] = icon_path
+        return icon_path
     
     def get_app_icon(self, app_name):
         # Returns the icon path for the given application name.
@@ -396,6 +307,28 @@ class SpotlightClone(Gtk.Window):
             return 'assets/app_icons/appunti.png'
         elif(app_name == 'spotify'):
             return 'assets/app_icons/spotify.png'
+        elif(app_name == 'overleaf'):
+            return 'assets/app_icons/overleaf.png'
+        elif(app_name == 'zoom'):  
+            return 'assets/app_icons/zoom.png'
+        elif(app_name == 'gaia-app'):
+            return 'assets/app_icons/gaia.png'
+        elif(app_name == 'gaia-web'):
+            return 'assets/app_icons/gaia.png'
+        elif(app_name == 'moodle'):
+            return 'assets/app_icons/moodle.png'
+        elif(app_name == 'telegram'):
+            return 'assets/app_icons/telegram.png'
+        elif(app_name == 'postman'):
+            return 'assets/app_icons/postman.png'
+        elif(app_name == 'gmail'):
+            return 'assets/app_icons/gmail.png'
+        elif (app_name == 'studio'):
+            return 'assets/app_icons/appunti.png'
+        elif (app_name == 'notetom'):
+            return 'assets/app_icons/notetom.png'
+
+        
         return 'assets/app_icons/app.png'
 
     def redefine_position(self, results_apps, results_files, results_dirs):
@@ -405,7 +338,108 @@ class SpotlightClone(Gtk.Window):
         else:
             self.move(self.x, Y_CENTER)
 
+    def create_app_widget(self, appname, appcommand):
+        event_box_app = Gtk.EventBox()
+        box_app = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        box_app.get_style_context().add_class("file-list-box")
+
+        appname_label = Gtk.Label(label=appname)
+        appname_label.set_halign(Gtk.Align.CENTER)
+        appname_label.get_style_context().add_class("filename-text")
+        appname_label.set_valign(Gtk.Align.CENTER)
+
+        img_path = self.get_app_icon(appname)
         
+        # Cache pixbufs
+        if img_path not in self.app_icon_cache:
+            self.app_icon_cache[img_path] = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                os.path.join(os.path.dirname(__file__), img_path), 23, 23
+            )
+        
+        image = Gtk.Image.new_from_pixbuf(self.app_icon_cache[img_path])
+        image.set_halign(Gtk.Align.CENTER)
+        image.set_valign(Gtk.Align.CENTER)
+
+        box_app.pack_start(image, False, False, 0)
+        box_app.pack_start(appname_label, False, False, 0)
+        event_box_app.add(box_app)
+        event_box_app.connect("button-press-event", self.run_apps, appcommand)
+
+        return event_box_app
+
+    def create_file_widget(self, filename, filepath):
+        event_box = Gtk.EventBox()
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        box.get_style_context().add_class("file-list-box")
+
+        filename_label = Gtk.Label(label=filename)
+        filename_label.set_halign(Gtk.Align.CENTER)
+        filename_label.get_style_context().add_class("filename-text")
+        filename_label.set_valign(Gtk.Align.CENTER)
+
+        path_txt = filepath.replace("/home/simone", "")
+        if len(filepath) > 60:
+            path_txt = '...' + filepath[30:]
+        filepath_label = Gtk.Label(label=path_txt)
+        filepath_label.get_style_context().add_class("filepath-text")
+        filepath_label.set_halign(Gtk.Align.END)
+
+        img_path = self.get_type_of_file(filename)
+        if img_path not in self.pixbuf_cache:
+            self.pixbuf_cache[img_path] = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                os.path.join(os.path.dirname(__file__), img_path), 23, 23
+            )
+        
+        image = Gtk.Image.new_from_pixbuf(self.pixbuf_cache[img_path])
+        image.set_halign(Gtk.Align.CENTER)
+        image.set_valign(Gtk.Align.CENTER)
+
+        box.pack_start(image, False, False, 0)
+        box.pack_start(filename_label, False, False, 0)
+        box.pack_start(filepath_label, False, False, 0)
+        event_box.add(box)
+        event_box.connect("button-press-event", self.open_file, filepath)
+
+        return event_box
+
+    def create_dir_widget(self, dir_name, dir_path):
+        event_box = Gtk.EventBox()
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
+        box.get_style_context().add_class("file-list-box")
+
+        dir_name_label = Gtk.Label(label=dir_name)
+        dir_name_label.set_halign(Gtk.Align.CENTER)
+        dir_name_label.get_style_context().add_class("filename-text")
+        dir_name_label.set_valign(Gtk.Align.CENTER)
+
+        path_txt = dir_path.replace("/home/simone", "")
+        if len(dir_path) > 60:
+            path_txt = '...' + dir_path[30:]
+        dirpath_label = Gtk.Label(label=path_txt)
+        dirpath_label.get_style_context().add_class("filepath-text")
+        dirpath_label.set_halign(Gtk.Align.END)
+
+        img_path = 'assets/folder.png'
+        if img_path not in self.pixbuf_cache:
+            self.pixbuf_cache[img_path] = GdkPixbuf.Pixbuf.new_from_file_at_size(
+                os.path.join(os.path.dirname(__file__), img_path), 23, 23
+            )
+        
+        image = Gtk.Image.new_from_pixbuf(self.pixbuf_cache[img_path])
+        image.set_halign(Gtk.Align.CENTER)
+        image.set_valign(Gtk.Align.CENTER)
+
+        box.pack_start(image, False, False, 0)
+        box.pack_start(dir_name_label, False, False, 0)
+        box.pack_start(dirpath_label, False, False, 0)
+        event_box.add(box)
+        event_box.connect("button-press-event", self.open_dir, dir_path)
+
+        return event_box
+
+    def __del__(self):
+        self.icon_executor.shutdown(wait=False)
+        self.executor.shutdown(wait=False)
 
 
 
