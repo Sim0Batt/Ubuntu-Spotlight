@@ -1,77 +1,73 @@
-# Spotlight Clone
+## 🛠️ Installation
 
-Spotlight Clone is a Python-based desktop search application inspired by macOS Spotlight. It allows users to search for files, directories, and applications on their system with a clean and intuitive graphical interface built using GTK.
-
-## Features
-
-- **File Search**: Quickly search for files on your system.
-- **Directory Search**: Locate directories by name.
-- **Application Search**: Search and launch applications with predefined commands.
-- **Dynamic UI**: Displays search results dynamically as you type.
-- **Custom Icons**: Displays file type and application-specific icons for better visual identification.
-- **Keyboard Shortcuts**: 
-  - Press `Escape` to close the application.
-  - Use the `Enter` key to run the first app result.
-
-## Installation
-
-1. Clone the repository:
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/Sim0Batt/Ubuntu-Spotlight
-   cd spotlight
+   cd Ubuntu-Spotlight
    ```
 
-2. Install the required dependencies:
+2. **Install Dependencies**  
+   Make sure you have Python 3 and pip installed.
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Ensure you have the following installed on your system:
-   - Python 3.12 or higher
-   - GTK 3
-   - Cairo
-   - Nautilus (for opening directories)
-   - GNOME Terminal
-
-4. Run the application:
+3. **Run the Application**
    ```bash
-   python app.py
+   python3 app.py
    ```
 
-## File Structure
+> 💡 *Make sure GTK and other required system libraries are installed, especially if you're running this on a minimal Linux installation.*
 
-```
+---
+
+## 🧪 Testing
+
+You can use the included `test.py` file to test individual indexing and searching components.
+
+---
+
+## 🗂 Project Structure
+
+```plaintext
 spotlight/
-├── app.py                # Main application file
-├── search.py             # Search logic for files, directories, and applications
-├── test.py               # Test script for launching a directory
-├── assets/               # Assets folder containing icons and styles
-    ├── styles.css        # CSS file for styling the application
-    ├── app_icons/        # Icons for applications
-    └── file_icons/       # Icons for file types
+├── app.py                 # Main GUI application
+├── indexer.py             # Indexing logic for files and applications
+├── search.py              # Search algorithm and filtering
+├── watchdog_indexer.py    # File system watching with auto-indexing
+├── spotlight_index.db     # SQLite database to store indexed data
+├── assets/                # Icons and other UI assets
+└── test.py                # Basic script for testing components
 ```
 
-## Usage
+---
 
-1. Launch the application by running `python app.py`.
-2. Type your search query in the search bar.
-3. Results will be displayed in three categories:
-   - **Files**
-   - **Directories**
-   - **Applications**
-4. Click on a result to open the file, directory, or application.
+## 🤝 Contributing
 
-## Customization
+Contributions, issues, and feature requests are welcome! Feel free to open a pull request or an issue on the [GitHub repo](https://github.com/Sim0Batt/Ubuntu-Spotlight).
 
-- **Application Commands**: Modify the `application_list` dictionary in [`search.py`](search.py) to add or update application commands.
-- **Icons**: Add or replace icons in the `assets/app_icons/` and `assets/file_icons/` directories.
-- **Styling**: Update the CSS styles in [`assets/styles.css`](assets/styles.css) to customize the appearance of the application.
+---
 
-## Known Limitations
+## 📄 License
 
-- Replace the all the strings `user_name` into the code with the user of your laptop.
-- Only the first 10 results are displayed for files and directories.
+This project is licensed under the [MIT License](LICENSE).
 
-## Contributing
+---
 
-Contributions are welcome! Feel free to submit issues or pull requests to improve the application.
+## 📷 Screenshots
+
+> *(Optional: You can add screenshots of the UI here by placing images in the `assets/` folder and referencing them below.)*
+
+```markdown
+![Spotlight UI](assets/screen1.png)
+```
+
+```markdown
+![Spotlight UI](assets/screen2.png)
+```
+
+---
+
+## 📬 Contact
+
+Created by **Sim0Batt** – feel free to reach out via GitHub or via e-mail **<simonebatt51@gmail.com>**!
