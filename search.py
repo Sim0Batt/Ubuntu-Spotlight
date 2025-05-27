@@ -14,16 +14,10 @@ application_list = {'firefox':'firefox',
                     'whatsapp': 'whatsapp-linux-app', 
                     'spotify': 'spotify', 
                     'zoom':'zoom', 
-                    'appunti':'emacs /home/simone/università/appuntiLatex/', 
-                    'gaia-app':'python /home/simone/gaia/app.py',
-                    'gaia-web':'firefox -new-window https://gaiaassistant.netlify.app/',
                     'overleaf':'firefox -new-window https://www.overleaf.com/project',
-                    'moodle': 'firefox -new-window https://webapps.unitn.it/gestionecorsi/',
                     'telegram':'telegram-desktop',
                     'postman':'postman',
                     'gmail': 'firefox -new-window https://mail.google.com/mail/u/0/#inbox',
-                    'studio': 'firefox -new-window https://webapps.unitn.it/gestionecorsi/ https://www.overleaf.com/project',
-                    'notetom': 'firefox --new-window https://notetom.onrender.com/'
 }
 
 class SearchInFiles():
