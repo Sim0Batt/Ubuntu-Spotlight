@@ -327,8 +327,11 @@ class SpotlightClone(Gtk.Window):
             return 'assets/app_icons/appunti.png'
         elif (app_name == 'notetom'):
             return 'assets/app_icons/notetom.png'
+<<<<<<< HEAD
         elif (app_name == 'intellij'):
             return 'assets/app_icons/intellij.png'
+=======
+>>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
 
         
         return 'assets/app_icons/app.png'
@@ -379,7 +382,11 @@ class SpotlightClone(Gtk.Window):
         filename_label.get_style_context().add_class("filename-text")
         filename_label.set_valign(Gtk.Align.CENTER)
 
+<<<<<<< HEAD
         path_txt = filepath.replace("/home/$USER", "")
+=======
+        path_txt = filepath.replace("/home/simone", "")
+>>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
         if len(filepath) > 60:
             path_txt = '...' + filepath[30:]
         filepath_label = Gtk.Label(label=path_txt)
@@ -414,7 +421,11 @@ class SpotlightClone(Gtk.Window):
         dir_name_label.get_style_context().add_class("filename-text")
         dir_name_label.set_valign(Gtk.Align.CENTER)
 
+<<<<<<< HEAD
         path_txt = dir_path.replace("/home/$USER", "")
+=======
+        path_txt = dir_path.replace("/home/simone", "")
+>>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
         if len(dir_path) > 60:
             path_txt = '...' + dir_path[30:]
         dirpath_label = Gtk.Label(label=path_txt)
