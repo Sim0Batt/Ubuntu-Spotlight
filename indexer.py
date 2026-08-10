@@ -3,7 +3,6 @@ import os
 import argparse
 
 DB_PATH = "spotlight_index.db"
-<<<<<<< HEAD
 APPLICATION_DB_PATH = "applications.db"
 
 application_list = {'firefox':'firefox',
@@ -26,12 +25,6 @@ application_list = {'firefox':'firefox',
 def build_index(root_dir):
     conn_files = sqlite3.connect(DB_PATH)
     cursor = conn_files.cursor()
-=======
-
-def build_index(root_dir):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
->>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
 
     # Recreate table to include a type column
     cursor.execute("DROP TABLE IF EXISTS entries")
@@ -47,7 +40,6 @@ def build_index(root_dir):
             cursor.execute("INSERT INTO entries (path, name, type) VALUES (?, ?, ?)",
                            (full_path, f, "file"))
 
-<<<<<<< HEAD
     conn_application = sqlite3.connect(APPLICATION_DB_PATH)
     cursor_application = conn_application.cursor()
 
@@ -60,10 +52,6 @@ def build_index(root_dir):
     conn_files.close()
     conn_application.commit()
     conn_application.close()
-=======
-    conn.commit()
-    conn.close()
->>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
     print(f"Index built for: {root_dir}")
 
 def search(term, kind=None):

@@ -19,6 +19,10 @@ window {
     border-radius: 10px;
     margin: 5px; /* Reduced margin */
 }
+.focused-result {
+    background-color: rgba(72, 145, 255, 0.22);
+    border: 1px solid rgba(72, 145, 255, 0.7);
+}
 .title {
     color: white;
     font-size: 20px;

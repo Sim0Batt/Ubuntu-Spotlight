@@ -2,7 +2,6 @@ import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import gi
-import cairo  # Import Cairo correctly
 
 os.environ["GDK_BACKEND"] = "x11"
 
@@ -12,11 +11,14 @@ from gi.repository import Gtk, Gdk, GLib
 from search import SearchInFiles as search  # Import your search module
 from gi.repository import GdkPixbuf
 
-screen = Gdk.Screen.get_default()
-monitor = screen.get_primary_monitor()
-geometry = screen.get_monitor_geometry(monitor)
 window_width, window_height = 900, 50
-Y_CENTER = geometry.y + (geometry.height - window_height) // 2
+display = Gdk.Display.get_default()
+monitor = display.get_primary_monitor() if display else None
+if monitor:
+    geometry = monitor.get_geometry()
+    Y_CENTER = geometry.y + (geometry.height - window_height) // 2
+else:
+    Y_CENTER = 0
 
 
 class SpotlightClone(Gtk.Window):
@@ -29,13 +31,17 @@ class SpotlightClone(Gtk.Window):
         super().__init__(title="Spotlight")
         self.set_default_size(900, 50)
         self.set_size_request(900, 50)
-        screen = self.get_screen()
-        monitor = screen.get_primary_monitor()
-        geometry = screen.get_monitor_geometry(monitor)  # has x, y, width, height
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() if display else None
         window_width, window_height = self.get_size()
-        # center on that monitor:
-        self.x = geometry.x + (geometry.width - window_width) // 2
-        self.y = geometry.y + (geometry.height - window_height) // 2
+
+        if monitor:
+            geometry = monitor.get_geometry()
+            self.x = geometry.x + (geometry.width - window_width) // 2
+            self.y = geometry.y + (geometry.height - window_height) // 2
+        else:
+            self.x = 0
+            self.y = 0
         self.move(self.x, self.y)
         self.set_decorated(False)
         self.first_app_command = ''
@@ -56,6 +62,10 @@ class SpotlightClone(Gtk.Window):
 
         # Debounce timer
         self.debounce_timer = None
+
+        # Ordered result widgets for focus/keyboard navigation.
+        self.result_items = []
+        self.selected_result_index = -1
 
         # Dictionary to store search results
         self.search_results = {}
@@ -115,9 +125,6 @@ class SpotlightClone(Gtk.Window):
         # Apply CSS
         self.apply_styles()
 
-        # Draw transparency
-        self.connect("draw", self.draw_transparent_background)
-
         self.show_all()
         self.vbox_list_container.hide()
 
@@ -135,21 +142,32 @@ class SpotlightClone(Gtk.Window):
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
-    def draw_transparent_background(self, widget, cr):
-        # Make window background fully transparent.
-        cr.set_source_rgba(1, 1, 1, 0)
-        cr.set_operator(cairo.Operator.SOURCE)
-        cr.paint()
-
     def on_key_press(self, widget, event):
         # Debounce search input and update results.
         if event.keyval == Gdk.KEY_Escape:
             self.close_window(widget)
             return
 
+        if event.keyval == Gdk.KEY_Down:
+            if self.result_items:
+                next_index = min(self.selected_result_index + 1, len(self.result_items) - 1)
+                self.set_selected_result(next_index)
+            return True
+
+        if event.keyval == Gdk.KEY_Up:
+            if self.result_items:
+                prev_index = max(self.selected_result_index - 1, 0)
+                self.set_selected_result(prev_index)
+            return True
+
         if event.keyval == Gdk.KEY_Return:
-            search.run_applications(self.first_app_command)
-            return
+            if self.selected_result_index >= 0:
+                self.activate_selected_result()
+                return True
+            if self.first_app_command:
+                search.run_applications(self.first_app_command)
+                return True
+            return False
 
         if self.debounce_timer:
             self.debounce_timer.cancel()
@@ -169,7 +187,7 @@ class SpotlightClone(Gtk.Window):
             result_apps = future_apps.result() or {}
 
             GLib.idle_add(self.update_list, result_apps, result_files, result_dirs)
-            self.first_app_command = result_apps.get(next(iter(result_apps)), '')  # Get the first app command
+            self.first_app_command = next(iter(result_apps.values()), '')
 
 
         self.debounce_timer = threading.Timer(0.5, debounce_search)  # Wrap event in a tuple
@@ -185,6 +203,8 @@ class SpotlightClone(Gtk.Window):
         self.file_list_box.foreach(lambda w: w.destroy())
         self.dir_list_box.foreach(lambda w: w.destroy()) 
         self.app_list_box.foreach(lambda w: w.destroy())
+        self.result_items = []
+        self.selected_result_index = -1
         
         self.search_results_files = results_files  
         self.search_results_apps = results_apps
@@ -203,22 +223,72 @@ class SpotlightClone(Gtk.Window):
         # Create and add app widgets
         for appname, appcommand in results_apps.items():
             widget = self.create_app_widget(appname, appcommand)
+            self.register_result_widget(widget, "app", appcommand)
             self.app_list_box.pack_start(widget, False, False, 0)
 
         # Create and add file widgets
         for filename, filepath in results_files.items():
             widget = self.create_file_widget(filename, filepath)
+            self.register_result_widget(widget, "file", filepath)
             self.file_list_box.pack_start(widget, False, False, 0)
 
         # Create and add directory widgets
         for dir_name, dir_path in results_dirs.items():
             widget = self.create_dir_widget(dir_name, dir_path)
+            self.register_result_widget(widget, "dir", dir_path)
             self.dir_list_box.pack_start(widget, False, False, 0)
 
         self.show_box()
         self.resize(900, 300)
         self.show_all()
+        if self.result_items:
+            self.set_selected_result(0)
         return False
+
+    def register_result_widget(self, event_box, item_type, payload):
+        item_index = len(self.result_items)
+        event_box.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK)
+        event_box.connect("enter-notify-event", self.on_result_hover, item_index)
+        event_box.connect("button-press-event", self.on_result_clicked, item_index)
+        self.result_items.append((event_box, item_type, payload))
+
+    def on_result_hover(self, widget, event, index):
+        self.set_selected_result(index)
+        return False
+
+    def on_result_clicked(self, widget, event, index):
+        self.set_selected_result(index)
+        return False
+
+    def set_selected_result(self, index):
+        if index < 0 or index >= len(self.result_items):
+            return
+
+        if 0 <= self.selected_result_index < len(self.result_items):
+            old_widget = self.result_items[self.selected_result_index][0].get_child()
+            if old_widget:
+                old_widget.get_style_context().remove_class("focused-result")
+
+        self.selected_result_index = index
+        new_widget = self.result_items[index][0].get_child()
+        if new_widget:
+            new_widget.get_style_context().add_class("focused-result")
+
+    def activate_selected_result(self):
+        if self.selected_result_index < 0 or self.selected_result_index >= len(self.result_items):
+            return
+
+        _, item_type, payload = self.result_items[self.selected_result_index]
+        if item_type == "app":
+            search.run_applications(payload)
+        elif item_type == "file":
+            search.open_file(payload)
+        elif item_type == "dir":
+            search.open_directory(payload)
+
+        if not self.executor._shutdown:
+            self.executor.shutdown(wait=False)
+        Gtk.main_quit()
 
     def open_file(self, widget, event, filepath):
         # Opens the selected file.
@@ -327,11 +397,8 @@ class SpotlightClone(Gtk.Window):
             return 'assets/app_icons/appunti.png'
         elif (app_name == 'notetom'):
             return 'assets/app_icons/notetom.png'
-<<<<<<< HEAD
         elif (app_name == 'intellij'):
             return 'assets/app_icons/intellij.png'
-=======
->>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
 
         
         return 'assets/app_icons/app.png'
@@ -382,11 +449,7 @@ class SpotlightClone(Gtk.Window):
         filename_label.get_style_context().add_class("filename-text")
         filename_label.set_valign(Gtk.Align.CENTER)
 
-<<<<<<< HEAD
-        path_txt = filepath.replace("/home/$USER", "")
-=======
-        path_txt = filepath.replace("/home/simone", "")
->>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
+        path_txt = filepath.replace(os.path.expanduser("~"), "~")
         if len(filepath) > 60:
             path_txt = '...' + filepath[30:]
         filepath_label = Gtk.Label(label=path_txt)
@@ -421,11 +484,7 @@ class SpotlightClone(Gtk.Window):
         dir_name_label.get_style_context().add_class("filename-text")
         dir_name_label.set_valign(Gtk.Align.CENTER)
 
-<<<<<<< HEAD
-        path_txt = dir_path.replace("/home/$USER", "")
-=======
-        path_txt = dir_path.replace("/home/simone", "")
->>>>>>> 3294013577bfebe85ea1622d6c75b853c9e822d2
+        path_txt = dir_path.replace(os.path.expanduser("~"), "~")
         if len(dir_path) > 60:
             path_txt = '...' + dir_path[30:]
         dirpath_label = Gtk.Label(label=path_txt)
@@ -451,8 +510,8 @@ class SpotlightClone(Gtk.Window):
         return event_box
 
     def __del__(self):
-        self.icon_executor.shutdown(wait=False)
-        self.executor.shutdown(wait=False)
+        if hasattr(self, "executor") and not self.executor._shutdown:
+            self.executor.shutdown(wait=False)
 
 
 
