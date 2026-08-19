@@ -78,7 +78,7 @@ class SpotlightClone(Gtk.Window):
         self.search_entry = Gtk.Entry()
         self.search_entry.set_placeholder_text("Search...")
         self.search_entry.get_style_context().add_class("custom-search-entry")
-        self.search_entry.connect("activate", self.close_window)
+        self.search_entry.connect("activate", self.open_first_app)
         self.search_entry.connect("key-press-event", self.on_key_press)
         vbox_general.pack_start(self.search_entry, False, False, 0)
 
@@ -161,13 +161,9 @@ class SpotlightClone(Gtk.Window):
             return True
 
         if event.keyval == Gdk.KEY_Return:
-            if self.selected_result_index >= 0:
-                self.activate_selected_result()
-                return True
             if self.first_app_command:
-                search.run_applications(self.first_app_command)
-                return True
-            return False
+                self.open_first_app(widget)
+            return True
 
         if self.debounce_timer:
             self.debounce_timer.cancel()
@@ -306,6 +302,15 @@ class SpotlightClone(Gtk.Window):
         # Opens the selected application.
         search.run_applications(app_name)
         self.executor.shutdown(wait=False)
+        Gtk.main_quit()
+
+    def open_first_app(self, widget, event=None):
+        if not self.first_app_command:
+            return
+
+        search.run_applications(self.first_app_command)
+        if not self.executor._shutdown:
+            self.executor.shutdown(wait=False)
         Gtk.main_quit()
 
     def close_window(self, widget, event=None):
